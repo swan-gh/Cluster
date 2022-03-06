@@ -1,4 +1,4 @@
-#include "ClusterArray.h"
+#include "../include/ClusterArray.h"
 #include <gtest/gtest.h>
 
 #include <list>
@@ -149,8 +149,6 @@ TEST(cluster_vector_test, foreach_test)
 		{
 			vectorOfInt.push_back(i);
 		}
-
-		print_cluster_vector(vectorOfInt);
 
 		EXPECT_EQ(vectorOfInt.size() , 2048u);
 		EXPECT_EQ(vectorOfInt.cluster_count() , 10);
