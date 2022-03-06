@@ -4,11 +4,11 @@ project (ClusterTests)
 
 add_subdirectory(gtest)
 
-add_executable(cluster_array_test ClusterArray.cpp)
+add_executable(cluster_vector_test ClusterVector.cpp)
 
-target_include_directories(cluster_array_test PUBLIC "${gtest_SOURCE_DIR}/include")
-target_link_libraries(cluster_array_test gtest)
-target_link_libraries(cluster_array_test gtest_main)
+target_include_directories(cluster_vector_test PUBLIC "${gtest_SOURCE_DIR}/include")
+target_link_libraries(cluster_vector_test gtest)
+target_link_libraries(cluster_vector_test gtest_main)
 
 add_executable(cluster_map_test ClusterMap.cpp)
 

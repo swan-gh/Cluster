@@ -1,4 +1,4 @@
-#include "../include/ClusterArray.h"
+#include "../include/ClusterVector.h"
 #include <gtest/gtest.h>
 
 #include <list>
