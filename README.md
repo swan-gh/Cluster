@@ -10,7 +10,7 @@ but comes at the cost of a slightly more complicated iteration pattern and fragm
 For these Cluster containers, we swap the concept of a `segment` for a `cluster` which does not have its size determined at compile time, meaning that we can use a scaling allocation pattern. By default, the containers double the size of any new clusters that are added, meaning that you end up with the order of `log2(size)` clusters compared to `size / segment_length` segments -- the result being a reduction in fragmentation and an increase in relative contiguity. This is similar to the type of allocation pattern found in [plf::colony](https://github.com/mattreecebentley/plf_colony).
 
 - **cluster_vector** is a cluster implementation of `eastl::segmented_vector`
-- **cluster_map** is a cluster implementation of a slot-map or handle-map, and has some similarities to `plf::colony` -- "An unordered data container providing fast iteration/insertion/erasure while maintaining pointer/iterator/reference validity to non-erased elements.". 
+- **cluster_map** is a cluster implementation of a slot-map or handle-map, and has some similarities to `plf::colony` -- An unordered data container providing fast iteration/insertion/erasure while maintaining handle validity to non-erased elements. 
 
 ## Using the containers
 
