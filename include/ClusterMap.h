@@ -45,7 +45,7 @@ namespace sw
 {
 
 template <typename T>
-class cluster_map_dense_storage;
+struct cluster_map_dense_storage;
 
 template <typename T>
 struct cluster_map_dense_storage
@@ -117,7 +117,10 @@ public:
 	using index_vector_type		= cluster_vector_type<index_type>;
 	using index_ptr_vector_type	= cluster_vector_type<index_type*>;
 
+	using value_type			= T;
+
 								cluster_map(size_type initialClusterCapacity, const Allocator& allocator = Allocator());
+								cluster_map() : cluster_map(64u) {}
 	void						swap(this_type& other);
 
 	allocator_type&				get_allocator() {return mDenseStorage.get_allocator();}
@@ -188,21 +191,21 @@ template<typename T, typename Allocator>
 T*
 cluster_map_dense_storage_iterator<T, Allocator>::operator->() const
 {
-	return reinterpret_cast<T*>(mCurrent->mData.mCharData);
+	return reinterpret_cast<T*>(base_type::mCurrent->mData.mCharData);
 }
 
 template<typename T, typename Allocator>
 T&
 cluster_map_dense_storage_iterator<T, Allocator>::operator*() const
 {
-	return *reinterpret_cast<T*>(mCurrent->mData.mCharData);
+	return *reinterpret_cast<T*>(base_type::mCurrent->mData.mCharData);
 }
 
 template<typename T, typename Allocator>
 cluster_map_dense_storage_iterator<T, Allocator>&
 cluster_map_dense_storage_iterator<T, Allocator>::operator++()
 {
-	if (CLUSTER_UNLIKELY(mCurrent + 1u == mLastElement.mCurrent))
+	if (CLUSTER_UNLIKELY(base_type::mCurrent + 1u == mLastElement.mCurrent))
 	{
 		*this = mLastElement;
 	}
