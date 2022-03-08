@@ -12,6 +12,9 @@ For these Cluster containers, we swap the concept of a `segment` for a `cluster`
 - **cluster_vector** is a cluster implementation of `eastl::segmented_vector`
 - **cluster_map** is a cluster implementation of a slot-map or handle-map, and has some similarities to `plf::colony` -- An unordered data container providing fast iteration/insertion/erasure while maintaining handle validity to non-erased elements. 
 
+## Benchmarks
+Benchmarking repository is [here](https://github.com/swan-gh/ClusterBench) with a pdf of results viewable [here](https://github.com/swan-gh/ClusterBench/blob/main/results/cluster_benchmark.pdf).
+
 ## Using the containers
 
 Just add the include folder to your include path and include `ClusterVector.h` or `ClusterMap.h` in your files. All common defines are in `Common.h` and are almost entirely lifted from EASTL definitions (but are all renamed and namespaced to avoid collision). Platform support has not been well tested, and container tests are currently minimal.
