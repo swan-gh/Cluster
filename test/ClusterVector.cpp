@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
 	return RUN_ALL_TESTS();
 }
 
-template < typename T, typename A >
-void print_cluster(sw::cluster<T, A> const& p_cluster, int cluster_num)
+template < typename T>
+void print_cluster(sw::cluster<T> const& p_cluster, int cluster_num)
 {
 	std::cout << "Cluster " << cluster_num << " : Capacity " << p_cluster.capacity() << " : Length " << p_cluster.size() << " : ["; 
 	for (int i : p_cluster)

@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
 	return RUN_ALL_TESTS();
 }
 
-template < typename T, typename A >
-void print_cluster(sw::cluster<T, A> const& p_cluster)
+template < typename T>
+void print_cluster(sw::cluster<T> const& p_cluster)
 {
 	std::cout << "	Capacity " << p_cluster.capacity() << " : Length " << p_cluster.size() << " : ["; 
 	for (auto & i : p_cluster)
@@ -68,8 +68,8 @@ void print_cluster_vector(sw::cluster_vector<T, A> const& p_cluster_vec)
 	std::cout << "}" << std::endl;
 }
 
-template < typename T, typename A >
-void print_dense_cluster(sw::cluster<sw::cluster_map_dense_storage<T>, A> const& p_cluster)
+template < typename T>
+void print_dense_cluster(sw::cluster<sw::cluster_map_dense_storage<T>> const& p_cluster)
 {
 	std::cout << "	Capacity " << p_cluster.capacity() << " : Length " << p_cluster.size() << " : ["; 
 	for (auto & i : p_cluster)
@@ -146,10 +146,10 @@ TEST(cluster_map_test, push_back_test)
 
 		{
 			auto i = sv.begin();
-			EXPECT_EQ(sv.at(first) , 0);
-			EXPECT_EQ(sv.at(second), 1);
-			EXPECT_EQ(sv.at(third), 2);
-			EXPECT_EQ(sv.at(fourth), 3);
+			EXPECT_EQ(sw::at(first) , 0);
+			EXPECT_EQ(sw::at(second), 1);
+			EXPECT_EQ(sw::at(third), 2);
+			EXPECT_EQ(sw::at(fourth), 3);
 		}
 	}
 }
@@ -201,9 +201,9 @@ TEST(cluster_map_test, foreach_test)
 			int k = 0;
 			for (auto i : handleVec)
 			{
-				int lhs = mapOfInt.at(i);
+				int lhs = sw::at(i);
 				int rhs = initValues[l+k];
-				EXPECT_EQ(mapOfInt.at(i), initValues[l+k]);
+				EXPECT_EQ(sw::at(i), initValues[l+k]);
 				k++;
 			}
 			mapOfInt.erase(handleVec.at(0));
@@ -303,7 +303,7 @@ void advanceConwayCluster(
 				{
 					if(!(c == 0 && d == 0))
 					{
-						if(gridTwoHandles[a+c][b+d].mElementPtr && gridTwo.at(gridTwoHandles[a+c][b+d]))
+						if(gridTwoHandles[a+c][b+d].mElementPtr && sw::at(gridTwoHandles[a+c][b+d]))
 						{
 							++alive;
 						}
@@ -343,7 +343,7 @@ void compareMethods(
 			EXPECT_EQ(gridState, gridOneHandles[a][b].mElementPtr != nullptr);
 			if (gridState)
 			{
-				EXPECT_EQ(gridState, clustermap.at(gridOneHandles[a][b]));
+				EXPECT_EQ(gridState, sw::at(gridOneHandles[a][b]));
 			}
 		}
 	}

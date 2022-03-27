@@ -46,6 +46,7 @@ namespace detail
 template<typename T>
 struct cluster_helper
 {
+	static const uintptr_t	kIsLastCluster = 1 << 0;
 	uintptr_t				mPrev;
 
 	union
@@ -138,12 +139,12 @@ struct pow_table
 
 }
 
-template<typename T, typename Allocator>
+template<typename T>
 class cluster
 {
 public:
 	using size_type			= size_t;
-	using this_type			= cluster<T, Allocator>;
+	using this_type			= cluster<T>;
 	using iterator			= T*;
 	using const_iterator	= T const *;
 
@@ -174,16 +175,16 @@ public:
 	//Data is allocated inline following this object
 	T*						mDataEnd;
 	template<typename, typename, size_t> friend class cluster_vector;
-	template<typename, typename> friend struct cluster_vector_iterator;
+	template<typename> friend struct cluster_vector_iterator;
 };
 
 
-template <typename T, typename Allocator>
+template <typename T>
 struct cluster_vector_iterator
 {
 public:
-	using this_type			= cluster_vector_iterator<T, Allocator>;
-	using cluster_type		= cluster<T, Allocator>;
+	using this_type			= cluster_vector_iterator<T>;
+	using cluster_type		= cluster<T>;
 
 	T*						operator->() const;
 	T&						operator*() const;
@@ -207,11 +208,11 @@ public:
 
 	using size_type				= size_t;
 	using this_type				= cluster_vector<T, Allocator, tStepSize>;
-	using cluster_type			= cluster<T, Allocator>;
+	using cluster_type			= cluster<T>;
 	using cluster_helper_type	= typename detail::cluster_helper<T>;
 	using allocator_type		= Allocator;
-	using iterator				= cluster_vector_iterator<T, Allocator>;
-	using const_iterator		= cluster_vector_iterator<const T, Allocator>;
+	using iterator				= cluster_vector_iterator<T>;
+	using const_iterator		= cluster_vector_iterator<const T>;
 
 	using value_type			= T;
 
@@ -266,9 +267,9 @@ protected:
 };
 
 
-template<typename T,  typename Allocator>
-inline const cluster<T, Allocator>*
-cluster<T, Allocator>::next_cluster() const
+template<typename T>
+inline const cluster<T>*
+cluster<T>::next_cluster() const
 {
 	if (mPrev & kIsLastCluster)
 	{
@@ -280,9 +281,9 @@ cluster<T, Allocator>::next_cluster() const
 	}
 }
 
-template<typename T,  typename Allocator>
-inline cluster<T, Allocator>*
-cluster<T, Allocator>::next_cluster()
+template<typename T>
+inline cluster<T>*
+cluster<T>::next_cluster()
 {
 	if (mPrev & kIsLastCluster)
 	{
@@ -294,25 +295,25 @@ cluster<T, Allocator>::next_cluster()
 	}
 }
 
-template<typename T,  typename Allocator>
-inline typename cluster<T, Allocator>::const_iterator
-cluster<T, Allocator>::begin() const
+template<typename T>
+inline typename cluster<T>::const_iterator
+cluster<T>::begin() const
 {
 	char const * dataOffset = reinterpret_cast<char const *>(this) + CLUSTER_OFFSETOF(detail::cluster_helper<T>, mDummyData);
-	return (cluster<T, Allocator>::iterator)(dataOffset);
+	return (cluster<T>::iterator)(dataOffset);
 }
 
-template<typename T,  typename Allocator>
-inline typename cluster<T, Allocator>::iterator
-cluster<T, Allocator>::begin()
+template<typename T>
+inline typename cluster<T>::iterator
+cluster<T>::begin()
 {
 	char* dataOffset = reinterpret_cast<char*>(this) + CLUSTER_OFFSETOF(detail::cluster_helper<T>, mDummyData);
-	return (cluster<T, Allocator>::iterator)(dataOffset);
+	return (cluster<T>::iterator)(dataOffset);
 }
 
-template<typename T,  typename Allocator>
-inline typename cluster<T, Allocator>::const_iterator
-cluster<T, Allocator>::end() const
+template<typename T>
+inline typename cluster<T>::const_iterator
+cluster<T>::end() const
 {
 	if (mPrev & this_type::kIsLastCluster)
 	{
@@ -324,9 +325,9 @@ cluster<T, Allocator>::end() const
 	}
 }
 
-template<typename T,  typename Allocator>
-inline typename cluster<T, Allocator>::iterator
-cluster<T, Allocator>::end()
+template<typename T>
+inline typename cluster<T>::iterator
+cluster<T>::end()
 {
 	if (mPrev & kIsLastCluster)
 	{
@@ -338,16 +339,16 @@ cluster<T, Allocator>::end()
 	}
 }
 
-template<typename T, typename Allocator>
-inline typename cluster<T, Allocator>::size_type 
-cluster<T, Allocator>::capacity() const
+template<typename T>
+inline typename cluster<T>::size_type 
+cluster<T>::capacity() const
 {
 	return mDataEnd - begin();
 }
 
-template<typename T, typename Allocator>
-inline typename cluster<T, Allocator>::size_type
-cluster<T, Allocator>::size() const
+template<typename T>
+inline typename cluster<T>::size_type
+cluster<T>::size() const
 {
 	if (mPrev & this_type::kIsLastCluster)
 	{
@@ -359,36 +360,36 @@ cluster<T, Allocator>::size() const
 	}
 }
 
-template<typename T, typename Allocator>
-inline typename cluster<T, Allocator>::size_type 
-cluster<T, Allocator>::allocation_size(size_type num_elements)
+template<typename T>
+inline typename cluster<T>::size_type 
+cluster<T>::allocation_size(size_type num_elements)
 {
 	return sizeof(detail::cluster_helper<T>) + (sizeof(T) * num_elements) - (sizeof(T) * 2u);
 }
 
-template<typename T, typename Allocator>
-inline bool cluster<T, Allocator>::is_last_cluster() const
+template<typename T>
+inline bool cluster<T>::is_last_cluster() const
 {
 	return mPrev & this_type::kIsLastCluster;
 }
 
-template<typename T, typename Allocator>
+template<typename T>
 T*
-cluster_vector_iterator<T, Allocator>::operator->() const
+cluster_vector_iterator<T>::operator->() const
 {
 	return mCurrent;
 }
 
-template<typename T, typename Allocator>
+template<typename T>
 T&
-cluster_vector_iterator<T, Allocator>::operator*() const
+cluster_vector_iterator<T>::operator*() const
 {
 	return *mCurrent;
 }
 
-template<typename T, typename Allocator>
-cluster_vector_iterator<T, Allocator>&
-cluster_vector_iterator<T, Allocator>::operator++()
+template<typename T>
+cluster_vector_iterator<T>&
+cluster_vector_iterator<T>::operator++()
 {
 	++mCurrent;
 	if(CLUSTER_UNLIKELY(mCurrent == mEnd))
@@ -407,9 +408,9 @@ cluster_vector_iterator<T, Allocator>::operator++()
 	return *this;
 }
 
-template<typename T, typename Allocator>
-cluster_vector_iterator<T, Allocator>
-cluster_vector_iterator<T, Allocator>::operator++(int)
+template<typename T>
+cluster_vector_iterator<T>
+cluster_vector_iterator<T>::operator++(int)
 {
 	this_type i(*this);
 	operator++();
@@ -674,7 +675,7 @@ cluster_vector<T, Allocator, tStepSize>::swap(this_type& other)
 }
 
 template <typename T,  typename Allocator, size_t tStepSize>
-cluster<T, Allocator>*
+cluster<T>*
 cluster_vector<T, Allocator, tStepSize>::DoAlloccluster(cluster_type* prevcluster, size_t numElements)
 {
 	++mClusterCount;
@@ -719,28 +720,15 @@ cluster_vector<T, Allocator, tStepSize>::DoPushBack()
 	return itr;
 }
 
-template<typename T,  typename Allocator>
-inline bool operator==(const cluster_vector_iterator<const T, Allocator>& a, const cluster_vector_iterator<const T, Allocator>& b)
+template<typename T>
+inline bool operator==(const cluster_vector_iterator<T>& a, const cluster_vector_iterator<T>& b)
 {
 	return a.mCurrent == b.mCurrent;
 }
 
 
-template<typename T,  typename Allocator>
-inline bool operator!=(const cluster_vector_iterator<const T, Allocator>& a, const cluster_vector_iterator<const T, Allocator>& b)
-{
-	return a.mCurrent != b.mCurrent;
-}
-
-template<typename T,  typename Allocator>
-inline bool operator==(const cluster_vector_iterator<T, Allocator>& a, const cluster_vector_iterator<T, Allocator>& b)
-{
-	return a.mCurrent == b.mCurrent;
-}
-
-
-template<typename T,  typename Allocator>
-inline bool operator!=(const cluster_vector_iterator<T, Allocator>& a, const cluster_vector_iterator<T, Allocator>& b)
+template<typename T>
+inline bool operator!=(const cluster_vector_iterator<T>& a, const cluster_vector_iterator<T>& b)
 {
 	return a.mCurrent != b.mCurrent;
 }

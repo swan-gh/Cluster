@@ -61,6 +61,41 @@ struct cluster_map_handle
 	cluster_map_dense_storage<T>*		mElementPtr;
 };
 
+template <typename T> inline void		validate(cluster_map_handle<T>& handle);
+template <typename T> inline T&			at(cluster_map_handle<T>& handle);
+template <typename T> inline T const&	at_c(cluster_map_handle<T>& handle);
+template <typename T> inline bool		is_null(cluster_map_handle<T> handle);
+
+template <typename T>
+void validate(cluster_map_handle<T>& handle)
+{
+	cluster_map_dense_storage<T>* index = handle.mElementPtr;
+	if (index->mSparseIndexPtr != handle.mSparseIndexPtr)
+	{
+		//Update the element ptr
+		handle.mElementPtr = *(handle.mSparseIndexPtr);
+	}
+}
+
+template <typename T>
+T& at(cluster_map_handle<T>& handle)
+{
+	validate(handle);
+	return *reinterpret_cast<T*>(handle.mElementPtr->mData.mCharData);
+}
+
+template <typename T>
+T const& at_c(cluster_map_handle<T>& handle)
+{
+	validate(handle);
+	return *reinterpret_cast<T const*>(handle.mElementPtr->mData.mCharData);
+}
+
+template <typename T> 
+bool is_null(cluster_map_handle<T> handle)
+{
+	return handle.mElementPtr == nullptr;
+}
 
 template <typename T>
 struct cluster_type_helper
@@ -72,17 +107,17 @@ struct cluster_type_helper
 };
 
 
-template <typename T, typename Allocator>
-struct cluster_map_dense_storage_iterator : public cluster_vector_iterator< typename cluster_type_helper<T>::inner_type, Allocator>
+template <typename T>
+struct cluster_map_dense_storage_iterator
 {
 public:
-	typedef cluster_map_dense_storage_iterator<T, Allocator>										this_type;
-	typedef cluster_vector_iterator< typename cluster_type_helper<T>::inner_type, Allocator>		base_type;
+	typedef cluster_map_dense_storage_iterator<T>										this_type;
+	typedef cluster_vector_iterator< typename cluster_type_helper<T>::inner_type>		vec_itr_type;
 
 	cluster_map_dense_storage_iterator() = default;
-	cluster_map_dense_storage_iterator(base_type const & base, base_type const & lastElement);
+	cluster_map_dense_storage_iterator(vec_itr_type const & currentElement, vec_itr_type const & lastElement);
 	
-	this_type&						operator=(base_type const &);
+	this_type&						operator=(vec_itr_type const &);
 
 	T*								operator->() const;
 	T&								operator*() const;
@@ -90,8 +125,27 @@ public:
 	this_type&						operator++();
 	this_type						operator++(int);
 
-	base_type						mLastElement;
+	vec_itr_type					mCurrentElement;
+	vec_itr_type					mLastElement;
 };
+
+template <typename T>
+inline typename cluster_map_handle<T> itr_to_handle(cluster_map_dense_storage_iterator<T> const * itr);
+
+template <typename T>
+typename cluster_map_handle<T> itr_to_handle(cluster_map_dense_storage_iterator<T> const * itr)
+{
+	using handle_type = cluster_map_handle<T>;
+	using itr_type = cluster_map_dense_storage_iterator<T>;
+	handle_type han{};
+	if (!itr->mCurrentElement.mCurrent)
+	{
+		return han;
+	}
+	han.mElementPtr = itr->mCurrentElement.mCurrent;
+	han.mSparseIndexPtr = han.mElementPtr->mSparseIndexPtr;
+	return han;
+}
 
 template <typename T, typename Allocator, size_t tStepSize = 2u>
 class cluster_map
@@ -111,8 +165,8 @@ public:
 
 	using storage_vector_type	= cluster_vector_type<storage_type>;
 	using storage_cluster_type	= typename storage_vector_type::cluster_type;
-	using const_iterator		= cluster_map_dense_storage_iterator<const T, Allocator>;
-	using iterator				= cluster_map_dense_storage_iterator<T, Allocator>;
+	using const_iterator		= cluster_map_dense_storage_iterator<const T>;
+	using iterator				= cluster_map_dense_storage_iterator<T>;
 
 	using index_vector_type		= cluster_vector_type<index_type>;
 	using index_ptr_vector_type	= cluster_vector_type<index_type*>;
@@ -137,10 +191,6 @@ public:
 	const_iterator				end() const;
 	iterator					end();
 
-	void						validate(handle_type& handle);
-	T&							at(handle_type& handle);
-	T const &					at(handle_type& handle) const;
-
 	size_type					size() const;
 	handle_type					front();
 	handle_type					back();
@@ -148,9 +198,11 @@ public:
 	bool						empty() const {return begin() == end();}
 	void						clear();
 
-	handle_type					insert();
-	handle_type					insert(const T& value);
-	handle_type					insert(T&& value);
+	void						swap_pos(iterator lhs, iterator rhs);
+	void						swap_pos(handle_type& lhs, handle_type& rhs);
+
+	template<typename... Args>
+	handle_type					insert(Args&&... args);
 
 	void						erase(handle_type& handle);
 	void						erase(iterator itr);
@@ -160,65 +212,63 @@ public:
 	index_ptr_vector_type const & unoccupied_list() const { return mUnoccupiedElements; }
 
 protected:
-	template<typename ...Args>
-	handle_type	insert_common(Args&&... args);
 
 	storage_vector_type				mDenseStorage;			//Store our data without any gaps or null elements, addresses are not stable. Intrusively stores a ptr back to the sparse Indices array.
 	index_vector_type				mSparseIndices;			//Store stable ptrs to the dense storage associated with this index. Null entries are nullptrs.
 	index_ptr_vector_type			mUnoccupiedElements;	//Store a list of removed sparse indices so that we have constant-time insertion
-	typename iterator::base_type	mDenseEnd;				//Itr to the last dense element + cluster
+	typename iterator::vec_itr_type	mDenseEnd;				//Itr to the last dense element + cluster
 };
 
-template<typename T, typename Allocator>
-inline cluster_map_dense_storage_iterator<T, Allocator>::cluster_map_dense_storage_iterator(base_type const& base, base_type const & lastElement)
-	: cluster_map_dense_storage_iterator<T, Allocator>::base_type(base)
+template<typename T>
+inline cluster_map_dense_storage_iterator<T>::cluster_map_dense_storage_iterator(vec_itr_type const& currentElement, vec_itr_type const & lastElement)
+	: mCurrentElement(currentElement)
 	, mLastElement(lastElement)
 {
 }
 
-template<typename T, typename Allocator>
-inline typename cluster_map_dense_storage_iterator<T, Allocator>::this_type&
-cluster_map_dense_storage_iterator<T, Allocator>::operator=
+template<typename T>
+inline typename cluster_map_dense_storage_iterator<T>::this_type&
+cluster_map_dense_storage_iterator<T>::operator=
 (
-	typename cluster_map_dense_storage_iterator<T, Allocator>::base_type const& p_itr
+	typename cluster_map_dense_storage_iterator<T>::vec_itr_type const& itr
 )
 {
-	base_type::operator=(p_itr);
+	mCurrentElement = itr;
 	return *this;
 }
 
-template<typename T, typename Allocator>
+template<typename T>
 T*
-cluster_map_dense_storage_iterator<T, Allocator>::operator->() const
+cluster_map_dense_storage_iterator<T>::operator->() const
 {
-	return reinterpret_cast<T*>(base_type::mCurrent->mData.mCharData);
+	return reinterpret_cast<T*>(mCurrentElement->mData.mCharData);
 }
 
-template<typename T, typename Allocator>
+template<typename T>
 T&
-cluster_map_dense_storage_iterator<T, Allocator>::operator*() const
+cluster_map_dense_storage_iterator<T>::operator*() const
 {
-	return *reinterpret_cast<T*>(base_type::mCurrent->mData.mCharData);
+	return *reinterpret_cast<T*>(mCurrentElement->mData.mCharData);
 }
 
-template<typename T, typename Allocator>
-cluster_map_dense_storage_iterator<T, Allocator>&
-cluster_map_dense_storage_iterator<T, Allocator>::operator++()
+template<typename T>
+cluster_map_dense_storage_iterator<T>&
+cluster_map_dense_storage_iterator<T>::operator++()
 {
-	if (CLUSTER_UNLIKELY(base_type::mCurrent + 1u == mLastElement.mCurrent))
+	if (CLUSTER_UNLIKELY(mCurrentElement.mCurrent + 1u == mLastElement.mCurrent))
 	{
-		*this = mLastElement;
+		mCurrentElement = mLastElement;
 	}
 	else
 	{
-		base_type::operator++();
+		++mCurrentElement;
 	}
 	return *this;
 }
 
-template<typename T, typename Allocator>
-cluster_map_dense_storage_iterator<T, Allocator>
-cluster_map_dense_storage_iterator<T, Allocator>::operator++(int)
+template<typename T>
+cluster_map_dense_storage_iterator<T>
+cluster_map_dense_storage_iterator<T>::operator++(int)
 {
 	this_type i(*this);
 	operator++();
@@ -255,31 +305,6 @@ inline typename cluster_map<T, Allocator, tStepSize>::const_iterator
 cluster_map<T, Allocator, tStepSize>::end() const
 {	
 	return const_iterator(mDenseEnd, mDenseEnd);
-}
-
-template<typename T, typename Allocator, size_t tStepSize>
-inline void cluster_map<T, Allocator, tStepSize>::validate(handle_type& handle)
-{
-	index_type index = handle.mElementPtr;
-	if (index->mSparseIndexPtr != handle.mSparseIndexPtr)
-	{
-		//Update the element ptr
-		handle.mElementPtr = *(handle.mSparseIndexPtr);
-	}
-}
-
-template<typename T, typename Allocator, size_t tStepSize>
-inline T& cluster_map<T, Allocator, tStepSize>::at(handle_type& handle)
-{
-	validate(handle);
-	return *reinterpret_cast<T*>(handle.mElementPtr->mData.mCharData);
-}
-
-template<typename T, typename Allocator, size_t tStepSize>
-inline T const& cluster_map<T, Allocator, tStepSize>::at(handle_type& handle) const
-{
-	validate(handle);
-	return *reinterpret_cast<T const*>(handle.mElementPtr->mData.mCharData);
 }
 
 template<typename T, typename Allocator, size_t tStepSize>
@@ -330,9 +355,39 @@ inline void cluster_map<T, Allocator, tStepSize>::clear()
 }
 
 template<typename T, typename Allocator, size_t tStepSize>
+inline void cluster_map<T, Allocator, tStepSize>::swap_pos(iterator lhs, iterator rhs)
+{
+	storage_type& lh = *reinterpret_cast<storage_type*>(lhs.mCurrentElement.mCurrent);
+	storage_type& rh = *reinterpret_cast<storage_type*>(rhs.mCurrentElement.mCurrent);
+	index_type* lh_index_ptr = lh.mSparseIndexPtr;
+	index_type* rh_index_ptr = rh.mSparseIndexPtr;
+	std::swap(lh, rh);
+
+	//Patch up indexes for swapped elements
+	*lh.mSparseIndexPtr = &lh;
+	*rh.mSparseIndexPtr = &rh;
+}
+
+template<typename T, typename Allocator, size_t tStepSize>
+inline void cluster_map<T, Allocator, tStepSize>::swap_pos(handle_type& lhs, handle_type& rhs)
+{
+	lhs.validate();
+	rhs.validate();
+	storage_type& lh = lhs.mElementPtr;
+	storage_type& rh = rhs.mElementPtr;
+	index_type* lh_index_ptr = lh.mSparseIndexPtr;
+	index_type* rh_index_ptr = rh.mSparseIndexPtr;
+	std::swap(lh, rh);
+
+	//Patch up indexes for swapped elements
+	*lh.mSparseIndexPtr = &lh;
+	*rh.mSparseIndexPtr = &rh;
+}
+
+template<typename T, typename Allocator, size_t tStepSize>
 template<typename ...Args>
 inline typename cluster_map<T, Allocator, tStepSize>::handle_type
-cluster_map<T, Allocator, tStepSize>::insert_common(Args && ...args)
+cluster_map<T, Allocator, tStepSize>::insert(Args && ...args)
 {
 	index_type* index_ptr{};
 	index_type index{};
@@ -368,27 +423,6 @@ cluster_map<T, Allocator, tStepSize>::insert_common(Args && ...args)
 	new (&(index->mData)) T(std::forward<Args>(args)...);
 
 	return handle_type{index_ptr, index};
-}
-
-template<typename T, typename Allocator, size_t tStepSize>
-inline typename cluster_map<T, Allocator, tStepSize>::handle_type
-cluster_map<T, Allocator, tStepSize>::insert()
-{
-	return insert_common();
-}
-
-template<typename T, typename Allocator, size_t tStepSize>
-inline typename cluster_map<T, Allocator, tStepSize>::handle_type
-cluster_map<T, Allocator, tStepSize>::insert(const T& value)
-{
-	return insert_common(value);
-}
-
-template<typename T, typename Allocator, size_t tStepSize>
-inline typename cluster_map<T, Allocator, tStepSize>::handle_type
-cluster_map<T, Allocator, tStepSize>::insert(T&& value)
-{
-	return insert_common(std::move(value));
 }
 
 template<typename T, typename Allocator, size_t tStepSize>
@@ -434,43 +468,43 @@ inline void cluster_map<T, Allocator, tStepSize>::erase(iterator itr)
 	erase(handle_type{itr.mCurrent->mSparseIndexPtr, itr.operator->()});
 }
 
-template<typename T,  typename Allocator>
-inline bool operator==(const cluster_map_dense_storage_iterator<const T, Allocator>& a, const cluster_map_dense_storage_iterator<const T, Allocator>& b)
+template<typename T>
+inline bool operator==(const cluster_map_dense_storage_iterator<const T>& a, const cluster_map_dense_storage_iterator<const T>& b)
 {
-	return a.mCurrent == b.mCurrent;
+	return a.mCurrentElement == b.mCurrentElement;
 }
 
 
-template<typename T,  typename Allocator>
-inline bool operator!=(const cluster_map_dense_storage_iterator<const T, Allocator>& a, const cluster_map_dense_storage_iterator<const T, Allocator>& b)
+template<typename T>
+inline bool operator!=(const cluster_map_dense_storage_iterator<const T>& a, const cluster_map_dense_storage_iterator<const T>& b)
 {
-	return a.mCurrent != b.mCurrent;
+	return a.mCurrentElement != b.mCurrentElement;
 }
 
-template<typename T,  typename Allocator>
-inline bool operator==(const cluster_map_dense_storage_iterator<T, Allocator>& a, const cluster_map_dense_storage_iterator<T, Allocator>& b)
+template<typename T>
+inline bool operator==(const cluster_map_dense_storage_iterator<T>& a, const cluster_map_dense_storage_iterator<T>& b)
 {
-	return a.mCurrent == b.mCurrent;
-}
-
-
-template<typename T,  typename Allocator>
-inline bool operator!=(const cluster_map_dense_storage_iterator<T, Allocator>& a, const cluster_map_dense_storage_iterator<T, Allocator>& b)
-{
-	return a.mCurrent != b.mCurrent;
-}
-
-template<typename T,  typename Allocator>
-inline bool operator==(const cluster_map_dense_storage_iterator<T, Allocator>& a, const cluster_vector_iterator<cluster_map_dense_storage<T>, Allocator>& b)
-{
-	return a.mCurrent == b.mCurrent;
+	return a.mCurrentElement == b.mCurrentElement;
 }
 
 
-template<typename T,  typename Allocator>
-inline bool operator!=(const cluster_vector_iterator<cluster_map_dense_storage<T>, Allocator>& a, const cluster_map_dense_storage_iterator<T, Allocator>& b)
+template<typename T>
+inline bool operator!=(const cluster_map_dense_storage_iterator<T>& a, const cluster_map_dense_storage_iterator<T>& b)
 {
-	return a.mCurrent != b.mCurrent;
+	return a.mCurrentElement != b.mCurrentElement;
+}
+
+template<typename T>
+inline bool operator==(const cluster_map_dense_storage_iterator<T>& a, const cluster_vector_iterator<cluster_map_dense_storage<T>>& b)
+{
+	return a.mCurrentElement == b.mCurrent;
+}
+
+
+template<typename T>
+inline bool operator!=(const cluster_vector_iterator<cluster_map_dense_storage<T>>& a, const cluster_map_dense_storage_iterator<T>& b)
+{
+	return a.mCurrent != b.mCurrentElement;
 }
 
 }
