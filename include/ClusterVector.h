@@ -681,7 +681,7 @@ cluster_vector<T, Allocator, tStepSize>::DoAlloccluster(cluster_type* prevcluste
 	++mClusterCount;
 
 	size_t allocationSize = cluster_type::allocation_size(numElements);
-	cluster_type* cluster = (cluster_type*)allocate_memory(mAllocator, allocationSize, CLUSTER_ALIGN_OF(cluster_helper_type), 0);
+	cluster_type* cluster = (cluster_type*)sw_allocate_memory(mAllocator, allocationSize, CLUSTER_ALIGN_OF(cluster_helper_type), 0);
 	cluster->mPrev = uintptr_t(prevcluster) | cluster_type::kIsLastCluster;
 	cluster->mSize = 1;
 	cluster->mDataEnd = (T*)((char*)cluster + allocationSize);

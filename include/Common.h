@@ -156,8 +156,16 @@ inline void CLUSTERBaseUnused(T const volatile & x) { (void)x; }
 #define CLUSTERAlloc(allocator, n) (allocator).allocate(n);
 #endif
 
+#ifndef CLUSTERAllocTag
+#define CLUSTERAllocTag(allocator, n, file, line, functionName) (allocator).allocate(n, 0, file, line, functionName);
+#endif
+
 #ifndef CLUSTERAllocAligned
 #define CLUSTERAllocAligned(allocator, n, alignment, offset) (allocator).allocate((n), (alignment), (offset))
+#endif
+
+#ifndef CLUSTERAllocAlignedTag
+#define CLUSTERAllocAlignedTag(allocator, n, alignment, offset, file, line, functionName) (allocator).allocate((n), 0, (alignment), (offset), file, line, functionName)
 #endif
 
 #ifndef CLUSTERFree
@@ -396,12 +404,12 @@ static inline int CLUSTER_count_leading_zeroes(uint32_t x)
 ///        function instead of a standalone function like below.
 ///
 template <typename Allocator>
-inline void* allocate_memory(Allocator& a, size_t n, size_t alignment, size_t alignmentOffset)
+inline void* allocate_memory_internal(Allocator& a, size_t n, size_t alignment, size_t alignmentOffset, const char* f, int l, const char* sf)
 {
 	void *result;
 	if (alignment <= CLUSTER_ALLOCATOR_MIN_ALIGNMENT)
 	{
-		result = CLUSTERAlloc(a, n);
+		result = CLUSTERAllocTag(a, n, f, l, sf);
 		// Ensure the result is correctly aligned.  An assertion likely indicates a mismatch between CLUSTER_ALLOCATOR_MIN_ALIGNMENT and the minimum alignment
 		// of CLUSTERAlloc.  If there is a mismatch it may be necessary to define CLUSTER_ALLOCATOR_MIN_ALIGNMENT to be the minimum alignment of CLUSTERAlloc, or
 		// to increase the alignment of CLUSTERAlloc to match CLUSTER_ALLOCATOR_MIN_ALIGNMENT.
@@ -409,7 +417,7 @@ inline void* allocate_memory(Allocator& a, size_t n, size_t alignment, size_t al
 	}
 	else
 	{
-		result = CLUSTERAllocAligned(a, n, alignment, alignmentOffset);
+		result = CLUSTERAllocAlignedTag(a, n, alignment, alignmentOffset, f, l, sf);
 		// Ensure the result is correctly aligned.  An assertion here may indicate a bug in the allocator.
 		auto resultMinusOffset = (char*)result - alignmentOffset;
 		CLUSTER_UNUSED(resultMinusOffset);
@@ -419,6 +427,9 @@ inline void* allocate_memory(Allocator& a, size_t n, size_t alignment, size_t al
 }
 
 }
+
+#define sw_allocate_memory(a, n, alignment, alignmentOffset) sw::allocate_memory_internal(a, n, alignment, alignmentOffset, __FILE__, __LINE__, __FUNCTION__)
+
 //-----------------------------------------------------------------------------
 
 #define CLUSTER_OFFSETOF(s,m) ((::size_t)&reinterpret_cast<char const volatile&>((((s*)0)->m)))

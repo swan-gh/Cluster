@@ -334,7 +334,11 @@ inline typename cluster_map<T, Allocator, tStepSize>::handle_type
 cluster_map<T, Allocator, tStepSize>::front()
 {
 	iterator first = begin();
-	return handle_type{first.mCurrent->mSparseIndexPtr, first.operator->()};
+	return handle_type
+	{
+		reinterpret_cast<cluster_map_dense_storage<T>**>(first.mCurrentElement->mSparseIndexPtr),
+		reinterpret_cast<cluster_map_dense_storage<T>*>(first.operator->())
+	};
 }
 
 template<typename T, typename Allocator, size_t tStepSize>
@@ -342,7 +346,11 @@ inline typename cluster_map<T, Allocator, tStepSize>::handle_type
 cluster_map<T, Allocator, tStepSize>::back()
 {
 	storage_type* last = mDenseEnd.mCurrent - 1u;
-	return handle_type{last->mSparseIndexPtr, reinterpret_cast<T*>(last->mData.mCharData)};
+	return handle_type
+	{
+		reinterpret_cast<cluster_map_dense_storage<T>**>(last->mSparseIndexPtr),
+		reinterpret_cast<cluster_map_dense_storage<T>*>(last->mData.mCharData)
+	};
 }
 
 template<typename T, typename Allocator, size_t tStepSize>
@@ -371,10 +379,10 @@ inline void cluster_map<T, Allocator, tStepSize>::swap_pos(iterator lhs, iterato
 template<typename T, typename Allocator, size_t tStepSize>
 inline void cluster_map<T, Allocator, tStepSize>::swap_pos(handle_type& lhs, handle_type& rhs)
 {
-	lhs.validate();
-	rhs.validate();
-	storage_type& lh = lhs.mElementPtr;
-	storage_type& rh = rhs.mElementPtr;
+	validate(lhs);
+	validate(rhs);
+	storage_type& lh = *lhs.mElementPtr;
+	storage_type& rh = *rhs.mElementPtr;
 	index_type* lh_index_ptr = lh.mSparseIndexPtr;
 	index_type* rh_index_ptr = rh.mSparseIndexPtr;
 	std::swap(lh, rh);
@@ -499,7 +507,6 @@ inline bool operator==(const cluster_map_dense_storage_iterator<T>& a, const clu
 {
 	return a.mCurrentElement == b.mCurrent;
 }
-
 
 template<typename T>
 inline bool operator!=(const cluster_vector_iterator<cluster_map_dense_storage<T>>& a, const cluster_map_dense_storage_iterator<T>& b)
