@@ -1,0 +1,51 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+<AutoVisualizer xmlns = "http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+   <Type Name = "sw::cluster&lt;*&gt;">
+   <Intrinsic Name="is_last" Expression="(bool)(mPrev &amp; sw::cluster&lt;$T1&gt;::kIsLastCluster)"/>
+   <Intrinsic Name="data_start" Expression="($T1*)&amp;(((sw::detail::cluster_helper&lt;$T1&gt;*)this)->mDummyData[0])"/>
+   <Intrinsic Name="size_result" Expression="(is_last() ? mSize : (mDataEnd - data_start()))"/>
+    <Expand>
+      <Item Name="Previous" >(sw::cluster&lt;$T1&gt;*)(mPrev &amp; (~sw::cluster&lt;$T1&gt;::kIsLastCluster))</Item>
+      <Item Name="Next" >(sw::cluster&lt;$T1&gt;*)(is_last() ? nullptr : mNext)</Item>
+      <Item Name="Size" >size_result()</Item>
+      <Synthetic Name="Elements" Condition="size_result() > 0u">
+        <Expand>
+          <ArrayItems>
+            <Size>size_result()</Size>
+            <ValuePointer>data_start()</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name = "sw::cluster_vector&lt;*,*,*&gt;">
+    <Intrinsic Name="series_sum" Expression="sw::detail::pow_table&lt;2&gt;::val[mClusterCount - 1u]"/>
+    <Intrinsic Name="numerator" Expression="mInitialClusterCapacity * (series_sum() - 1)"/>
+    <Intrinsic Name="denominator" Expression="($T3 - 1)"/>
+    <Intrinsic Name="size_result" Expression="(mLastcluster ? (numerator() / denominator()) + mLastcluster->mSize : 0u)"/>
+    <Expand> 
+      <Synthetic Name="Clusters" Condition="mLastcluster">
+        <Expand>
+          <LinkedListItems>
+            <Size>mClusterCount</Size>
+            <HeadPointer>mFirstcluster</HeadPointer>
+            <NextPointer>mNext</NextPointer>
+            <ValueNode>this</ValueNode>
+          </LinkedListItems>
+        </Expand>
+      </Synthetic>
+      <Item Name="Size" >size_result()</Item>    
+      <Item Name="mClusterCount" >mClusterCount</Item>
+      <Item Name="mFirstcluster" >mFirstcluster</Item>
+      <Item Name="mLastcluster" >mLastcluster</Item>         
+      <Item Name="mAllocator" >mAllocator</Item>
+      <Item Name="InitialClusterCapacity" >mInitialClusterCapacity</Item>
+    </Expand>
+  </Type>
+  <Type Name = "sw::cluster_map_dense_storage&lt;*&gt;">
+  	<Expand>
+  		<Item Name="mSparseIndexPtr" >mSparseIndexPtr</Item>
+  		<Item Name="Unit">($T1*) &amp; mData</Item>
+  	</Expand>
+  </Type>
+</AutoVisualizer>
