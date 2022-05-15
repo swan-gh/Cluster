@@ -165,7 +165,7 @@ inline void CLUSTERBaseUnused(T const volatile & x) { (void)x; }
 #endif
 
 #ifndef CLUSTERAllocAlignedTag
-#define CLUSTERAllocAlignedTag(allocator, n, alignment, offset, file, line, functionName) (allocator).allocate((n), 0, (alignment), (offset), file, line, functionName)
+#define CLUSTERAllocAlignedTag(allocator, n, alignment, offset, file, line, functionName) (allocator).allocate((n), (alignment), (offset), 0, file, line, functionName)
 #endif
 
 #ifndef CLUSTERFree
